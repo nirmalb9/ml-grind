@@ -79,9 +79,8 @@ class TwoLayerNet(object):
         # shape (N, C).                                                             #
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
-
+        hidden_layer = np.maximum(0, np.dot(X, W1) + b1)
+        scores = np.dot(hidden_layer,W2) + b2
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
         # If the targets are not given then jump out, we're done
@@ -97,8 +96,32 @@ class TwoLayerNet(object):
         # classifier loss.                                                          #
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        
+        
+        # data loss
+        num_examples = X.shape[0]
+#         scores -= np.max(scores,axis=1)[:,np.newaxis]
+#         correct_scores = np.exp(scores[np.arange(num_examples),y])
+#         sum_scores = np.sum(np.exp(scores),axis=1)
+#         data_loss = np.sum(-1*np.log(np.divide(correct_scores,sum_scores)))
+#         data_loss /= num_examples
+#     data_loss = np.sum(-1*np.log(np.divide(correct_scores,sum_scores)))
+#         loss /= num_examples
+        
+        
+        scores -= np.max(scores,axis=1)[:,np.newaxis]
+        exp_scores = np.exp(scores)
+        probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        correct_logprobs = -np.log(probs[range(num_examples),y])
+        data_loss = np.sum(correct_logprobs)/num_examples
+        
+        
+        
+        # L2 regularization
+        reg_loss =  reg * 0.5 * np.sum(W1*W1) + reg * 0.5 * np.sum(W2*W2)
+        loss = data_loss + reg_loss
+        
 
-        pass
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -110,8 +133,33 @@ class TwoLayerNet(object):
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        
+        # compute gradient on scores
+        dScores = probs
+        dScores[range(num_examples),y] -= 1
+        dScores /= num_examples
+        
+        # backpropagate the gradient to w2 and b2
+        dW2 = np.dot(hidden_layer.T, dScores)
+        db2 = np.sum(dScores, axis=0, keepdims=True)
+        
+        # backpropagate into hidden layer
+        dhidden = np.dot(dScores, W2.T)
+        dhidden[hidden_layer <= 0] = 0
+        
+        
+        # backprop into W,b
+        dW = np.dot(X.T,dhidden)
+        db = np.sum(dhidden, axis=0, keepdims=True)
+        
+        # add regularization gradient 
+        dW2 += reg*W2
+        dW += reg*W1
+        
+        grads['W2'] = dW2
+        grads['b2'] = db2
+        grads['W1'] = dW
+        grads['b1'] = db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -155,8 +203,9 @@ class TwoLayerNet(object):
             # them in X_batch and y_batch respectively.                             #
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-            pass
+            indices = np.random.choice(np.arange(num_train),batch_size)
+            X_batch = X[indices,:]
+            y_batch = y[indices]
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -171,8 +220,11 @@ class TwoLayerNet(object):
             # stored in the grads dictionary defined above.                         #
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+            self.params['W1'] += - learning_rate * grads['W1']
+            self.params['b1']  = self.params['b1'] - learning_rate * grads['b1']
+            self.params['W2']  += - learning_rate * grads['W2']
+            self.params['b2']  = self.params['b2'] - learning_rate * grads['b2']
 
-            pass
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -211,14 +263,16 @@ class TwoLayerNet(object):
           the elements of X. For all i, y_pred[i] = c means that X[i] is predicted
           to have class c, where 0 <= c < C.
         """
-        y_pred = None
+        y_pred = np.zeros(X.shape[0])
 
         ###########################################################################
         # TODO: Implement this function; it should be VERY simple!                #
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        
+        hidden_layer = np.maximum(0, np.dot(X, self.params['W1']) + self.params['b1'])
+        scores = np.dot(hidden_layer, self.params['W2']) + self.params['b2']
+        y_pred = np.argmax(scores, axis=1)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
